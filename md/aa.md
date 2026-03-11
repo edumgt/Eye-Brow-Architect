@@ -2,6 +2,7 @@ terraform apply
 terraform destroy
 
 
+
 📂 1. Frontend (사용자 화면 & 촬영 가이드)
 사용자가 직접 보게 될 웹 페이지와 촬영 가이드 로직이 담긴 파일들입니다.
 
