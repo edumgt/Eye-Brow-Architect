@@ -146,13 +146,27 @@ const SignupPage = () => {
 
     const startCamera = async () => {
         try {
+            setError('');
+
+            // HTTPS 보안 연결 체크 추가
+            if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+                setError('카메라 기능은 보안 연결(HTTPS) 환경에서만 사용 가능합니다. 주소창의 주소가 https://로 시작하는지 확인해 주세요.');
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                setError('이 브라우저에서는 카메라 기능을 지원하지 않거나, 보안 연결(HTTPS)이 필요합니다.');
+                return;
+            }
+
             setShowCamera(true);
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
             }
         } catch (err) {
-            setError('카메라를 활성화할 수 없습니다: ' + err.message);
+            console.error("Camera access error:", err);
+            setError('카메라를 활성화할 수 없습니다. 권한 허용 여부와 HTTPS 연결을 확인해 주세요.');
             setShowCamera(false);
         }
     };
