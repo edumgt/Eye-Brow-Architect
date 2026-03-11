@@ -1,0 +1,41 @@
+# Java / Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/resources/archetype-resources/google-services.json
+!**/src/test/resources/archetype-resources/google-services.json
+*.class
+*.jar
+*.war
+*.ear
+*.log
+
+# Python / AI_Service
+AI_Service/venv/
+AI_Service/__pycache__/
+*.pyc
+AI_Service/.env
+AI_Service/*.task
+
+# Node / Frontend
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.env
+Frontend/.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.DS_Store
+
+# AWS / Terraform
+.terraform/
+terraform.tfstate*
+*.pem
+
+# Local Uploads
+uploads/
+server_debug.log*
+backend_fresh.log
+final_verify.log
+mysql_connect.log
