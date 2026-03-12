@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: ai-service
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/brow-architect-ai:latest
+        image: 973759794851.dkr.ecr.ap-northeast-2.amazonaws.com/brow-architect-ai:latest
         ports:
         - containerPort: 8000
         resources:
@@ -54,7 +54,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/brow-architect-backend:latest
+        image: 973759794851.dkr.ecr.ap-northeast-2.amazonaws.com/brow-architect-backend:latest
         ports:
         - containerPort: 8080
         env:
@@ -64,15 +64,17 @@ spec:
           value: "http://ai-service:8000/analyze"
         # Database credentials should ideally be in a Secret
         - name: SPRING_DATASOURCE_URL
-          value: "jdbc:mysql://terraform-20260309023616760500000001.cf64ggy2eo8o.ap-northeast-2.rds.amazonaws.com:3306/eyebrow_architect?serverTimezone=UTC&useUniCode=yes&characterEncoding=UTF-8"
+          value: "jdbc:mysql://terraform-20260312011224642300000003.cf64ggy2eo8o.ap-northeast-2.rds.amazonaws.com:3306/eyebrow_db?serverTimezone=UTC&useUniCode=yes&characterEncoding=UTF-8"
         - name: SPRING_DATASOURCE_USERNAME
           value: "nahye_admin"
         - name: SPRING_DATASOURCE_PASSWORD
           value: "nahye1234"
-        - name: AWS_ACCESS_KEY_ID
-          value: "${AWS_ACCESS_KEY_ID}"
-        - name: AWS_SECRET_ACCESS_KEY
-          value: "${AWS_SECRET_ACCESS_KEY}"
+        - name: AMAZON_LEX_BOT_ID
+          value: "93G9BEFBTR"
+        - name: AMAZON_LEX_BOT_ALIAS_ID
+          value: "TSTALIASID"
+        - name: SPRING_APPLICATION_JSON
+          value: '{"amazon":{"lex":{"botId":"93G9BEFBTR","botAliasId":"TSTALIASID"}}}'
 ---
 apiVersion: v1
 kind: Service
@@ -103,9 +105,17 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-2.amazonaws.com/brow-architect-frontend:latest
+        image: 973759794851.dkr.ecr.ap-northeast-2.amazonaws.com/brow-architect-frontend:latest
         ports:
         - containerPort: 80
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: nginx.conf
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: frontend-nginx-config
 ---
 apiVersion: v1
 kind: Service

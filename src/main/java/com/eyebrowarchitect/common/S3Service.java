@@ -40,10 +40,10 @@ public class S3Service {
     public String uploadFile(byte[] fileBytes, String originalFilename) {
         String fileName = UUID.randomUUID().toString() + "_" + originalFilename;
 
-        // Force local or fallback if S3 is not configured
-        String trimmedKey = accessKey != null ? accessKey.trim() : "NONE";
-        if (forceLocal || "NONE".equals(trimmedKey)) {
-            log.info("로컬 저장 모드 작동 중 (forceLocal: {}, accessKey: [TRIMMED])", forceLocal);
+        // Use S3 if not forced to local. IAM roles will provide credentials even if
+        // accessKey is NONE.
+        if (forceLocal) {
+            log.info("로컬 저장 모드 강제 작동 중 (forceLocal: true)");
             return saveToFileSystem(fileBytes, fileName);
         }
 

@@ -2,6 +2,13 @@ provider "aws" {
   region = "ap-northeast-2"
 }
 
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_file = "../../AWS/lex_lambda_handler.py"
+  output_path = "lex_lambda_function.zip"
+}
+
+
 # 1. VPC 및 인터넷 대문 (이미 있는 것 유지)
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
@@ -240,6 +247,17 @@ resource "aws_iam_role_policy_attachment" "ecr_read_only" {
   role       = aws_iam_role.eks_node_role.name
 }
 
+resource "aws_iam_role_policy_attachment" "s3_access" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+  role       = aws_iam_role.eks_node_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "lex_access" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonLexFullAccess"
+  role       = aws_iam_role.eks_node_role.name
+}
+
+
 # 8. EKS Cluster
 resource "aws_eks_cluster" "main" {
   name     = "brow-architect-cluster"
@@ -273,3 +291,38 @@ resource "aws_eks_node_group" "main" {
     aws_iam_role_policy_attachment.ecr_read_only,
   ]
 }
+
+# 10. Lex Fulfillment Lambda
+resource "aws_iam_role" "lex_lambda_role" {
+  name = "lex-lambda-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  role       = aws_iam_role.lex_lambda_role.name
+}
+
+resource "aws_lambda_function" "lex_fulfillment_lambda" {
+  filename      = "lex_lambda_function.zip"
+  function_name = "lex_lambda_handler"
+  role          = aws_iam_role.lex_lambda_role.arn
+  handler       = "lex_lambda_handler.lambda_handler"
+  runtime       = "python3.12"
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+}
+
+resource "aws_lambda_permission" "allow_lex" {
+  statement_id  = "AllowExecutionFromLex"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.lex_fulfillment_lambda.function_name
+  principal     = "lex.amazonaws.com"
+}
+

@@ -54,8 +54,8 @@ public class LexService {
 
         if (finalAccessKey != null && finalSecretKey != null && !finalAccessKey.isEmpty()
                 && !"NONE".equals(finalAccessKey)) {
-            log.info("AWS Lex 클라이언트를 명시적 자격 증명으로 초기화합니다. (KeyPrefix: {})",
-                    finalAccessKey.substring(0, Math.min(finalAccessKey.length(), 4)));
+            log.info("AWS Lex 클라이언트를 명시적 자격 증명으로 초기화합니다. (BotID: {}, AliasID: {})",
+                    botId, botAliasId);
 
             this.lexClient = LexRuntimeV2Client.builder()
                     .region(Region.of(region))
@@ -63,7 +63,8 @@ public class LexService {
                             AwsBasicCredentials.create(finalAccessKey.trim(), finalSecretKey.trim())))
                     .build();
         } else {
-            log.warn("AWS 자격 증명이 설정되지 않았습니다. 기본 환경 변수 체인을 시도합니다.");
+            log.info("AWS Lex 클라이언트를 기본 체인(IAM Role 등)으로 초기화합니다. (BotID: {}, AliasID: {})",
+                    botId, botAliasId);
             this.lexClient = LexRuntimeV2Client.builder()
                     .region(Region.of(region))
                     .build();
@@ -73,37 +74,10 @@ public class LexService {
     public String getResponse(String sessionId, String text) {
         log.info("Lex 요청 수신 [Session: {}, Text: {}]", sessionId, text);
 
-        // 1. DUMMY 모드 처리 (지능형 컨설턴트 시나리오)
-        if ("DUMMY_BOT".equals(botId)) {
-            String cleanText = text.replaceAll("\\s", "");
-
-            // TPO별 분기
-            if (cleanText.contains("면접") || cleanText.contains("회사") || cleanText.contains("출근")) {
-                return "나혜님의 [둥근 얼굴형]을 보완하기 위해 신뢰감을 주는 '하이 아치' 눈썹을 추천드려요. 산을 조금 높게 잡으면 인상이 훨씬 또렷해 보인답니다. 오른쪽 스튜디오에 면접용 가이드를 로드해 드릴게요! ✨";
-            }
-            if (cleanText.contains("데이트") || cleanText.contains("소개팅") || cleanText.contains("선물")) {
-                return "데이트를 앞두고 계시군요! 사랑스럽고 부드러운 느낌을 주는 '내추럴 롱 아치' 스타일이 나혜님의 얼굴형과 아주 조화로울 거예요. 스튜디오에서 스타일을 확인해 보세요. ❤️";
-            }
-            if (cleanText.contains("분석") || cleanText.contains("결과") || cleanText.contains("내얼굴")) {
-                return "기본 분석 결과는 상단 '분석 결과 요약 보기 📸'를 통해 확인하실 수 있어요. 저는 이 분석 데이터를 바탕으로 오늘 나혜님의 TPO에 맞는 특별한 메이크업을 제안해 드립니다! 무엇을 도와드릴까요? 💄";
-            }
-            if (cleanText.contains("안녕") || cleanText.contains("하이") || cleanText.contains("누구")) {
-                return "안녕하세요! 뷰티 아키텍트입니다. 나혜님만의 고유한 매력을 살려주면서 오늘 상황에 딱 맞는 눈썹과 메이크업을 찾아드리는 상담을 진행하고 있어요. 😊";
-            }
-
-            // Fallback (다양성 확보)
-            String[] fallbacks = {
-                    "그 상황에 대해 조금 더 자세히 말씀해 주시면, 제가 최적의 눈썹 곡선을 설계해 드릴 수 있어요! (예: 면접, 데이트, 평소 데일리용)",
-                    "나혜님의 매력을 극대화할 수 있는 스타일을 찾고 있어요. 오늘 가시는 곳이나 원하는 분위기를 키워드로 알려주시겠어요? ✨",
-                    "뷰티 아키텍트가 분석 중이에요! '데이트'나 '면접' 같은 메이크업 목적을 말씀해 주시면 딱 맞는 가이드를 보여드릴게요. 🧐",
-                    "이해하기 조금 어려웠어요. 하지만 걱정 마세요! 오늘 어떤 메이크업이 고민이신지 구체적으로 말씀해 주시면 바로 컨설팅해 드릴게요. 😊"
-            };
-            int randomIndex = (int) (Math.random() * fallbacks.length);
-            return fallbacks[randomIndex];
-        }
-
-        // 2. 실제 AWS Lex 연동
+        // 실제 AWS Lex 연동
         try {
+            System.out.println(
+                    "DEBUG: Lex Call Attempt - BotID: " + botId + ", AliasID: " + botAliasId + ", Text: " + text);
             RecognizeTextRequest request = RecognizeTextRequest.builder()
                     .botId(botId)
                     .botAliasId(botAliasId)
@@ -135,6 +109,8 @@ public class LexService {
             return getHybridResponse(text);
 
         } catch (Exception e) {
+            System.out.println("DEBUG: Lex Call Failed!");
+            e.printStackTrace(System.out);
             log.error("Lex 응답 중 오류 발생: {}", e.getMessage(), e);
             return "상담 서비스 연동 중 일시적인 문제가 발생했습니다. (AWS Lex Connection Error)";
         }
