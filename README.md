@@ -32,9 +32,10 @@
     *   **정밀 좌표 렌더링**: 분석된 눈썹의 시작점, 산, 끝점 좌표를 시각화하여 사용자가 오차 없이 메이크업을 할 수 있도록 보조.
     *   **비결 보기 (Overlay Toggle)**: 원본 사진과 분석 가이드라인이 적용된 시뮬레이션 결과를 실시간으로 비교 확인 가능.
 
-4.  **클라우드 네이티브 아키텍처 (EKS/IaC)**
-    *   **Microservices Architecture (MSA)**: Frontend(React), Backend(Spring Boot), AI Service(FastAPI)를 독립적인 컨테이너로 분리 운영.
-    *   **Auto Scaling**: Amazon EKS(Kubernetes)를 통해 트래픽 증가 시 자동으로 Pod를 확장하여 서비스 가용성 확보.
+4.  **클라우드 네이티브 아키텍처 (EKS/IaC/Security)**
+    *   **Security-First Networking**: Public Subnet과 Private Subnet을 엄격히 분리하여 데이터 보호.
+    *   **ALB Ingress Controller**: 모든 외부 트래픽을 Application Load Balancer(ALB)로 수용하여 경로 기반 라우팅 수행.
+    *   **NAT Gateway**: Private Subnet 내의 자원들이 S3, Lex, Rekognition 등 외부 AWS 서비스와 안전하게 통신할 수 있는 아웃바운드 보안 통로 구축.
     *   **Infrastructure as Code (Terraform)**: 모든 클라우드 인프라를 코드로 관리하여 재현성 및 배포 안정성 극대화.
 
 ---
@@ -158,36 +159,40 @@ flowchart LR
     APIGW -. invokes .-> LAMBDA
 ```
 
-### 12-2. EKS 런타임 구조
-고가용성을 보장하는 Amazon EKS 클러스터 내부의 트래픽 흐름입니다.
+### 12-2. EKS 런타임 및 네트워크 구조
+고가용성과 보안을 보장하는 Amazon VPC 기반의 트래픽 흐름입니다.
 
 ```mermaid
 flowchart TD
     USER[Browser]
     ALB[ALB Ingress Controller]
-    F_SVC[Service: Frontend]
-    B_SVC[Service: Backend]
-    AI_SVC[Service: AI-Service]
-    F_POD1[App Pod 1]
-    F_POD2[App Pod 2]
-    B_POD1[Backend Pod 1]
-    B_POD2[Backend Pod 2]
-    AI_POD[AI Engine Pod]
-    DB[(Amazon RDS MySQL)]
-    S3[(Amazon S3 Bucket)]
+    
+    subgraph Public_Subnet ["Public Subnet"]
+        F_SVC[Service: Frontend]
+        NAT[NAT Gateway]
+    end
+
+    subgraph Private_Subnet ["Private Subnet"]
+        B_SVC[Service: Backend]
+        AI_SVC[Service: AI-Service]
+        DB[(Amazon RDS MySQL)]
+    end
+
+    S3[(Amazon S3)]
+    Lex[[Amazon Lex V2]]
+    Reko[[Amazon Rekognition]]
 
     USER --> ALB
     ALB --> F_SVC
     ALB --> B_SVC
-    F_SVC --> F_POD1
-    F_SVC --> F_POD2
-    B_SVC --> B_POD1
-    B_SVC --> B_POD2
-    B_POD1 --> AI_SVC
-    B_POD2 --> AI_SVC
-    AI_POD --> AI_SVC
-    B_POD1 --> DB
-    B_POD1 --> S3
+    
+    B_SVC --> AI_SVC
+    B_SVC --> DB
+    
+    %% NAT를 통한 외부 통신
+    B_SVC -- via NAT --> S3
+    B_SVC -- via NAT --> Lex
+    AI_SVC -- via NAT --> Reko
 ```
 
 ### 12-3. AI 얼굴 분석 및 상담 시퀀스
@@ -200,16 +205,22 @@ sequenceDiagram
     participant Backend
     participant AIService
     participant Lex
-    participant AWSResources
+    participant NAT as NAT Gateway
+    participant AWSResources as AWS Services (S3/Rekonition)
 
     User->>Browser: 상담 메시지/사진 전송
-    Browser->>Lex: 대화 의도 분석 요청
-    Lex-->>Browser: 가이드 발화 응답
-    Browser->>AWSResources: S3 이미지 원본 업로드
+    Browser->>Backend: 대화 요청
+    Backend->>NAT: 아웃바운드 요청
+    NAT->>Lex: 대화 의도 분석 요청
+    Lex-->>Backend: 응답 수신
+    Backend-->>Browser: 가이드 발화 응답
+    
+    Browser->>S3: 이미지 원본 업로드
     Browser->>Backend: 분석 프로세스 시작 (URL 전달)
     Backend->>AIService: 얼굴형 판별 요청
-    AIService->>AWSResources: Rekognition 특징점 추출
-    AWSResources-->>AIService: 30개 좌표 데이터 리턴
+    AIService->>NAT: 특징점 추출 요청
+    NAT->>AWSResources: Rekognition 호출
+    AWSResources-->>AIService: 좌표 데이터 리턴
     AIService->>AIService: 황금비율 수학적 계산
     AIService-->>Backend: 분석 결과 DTO 반환
     Backend-->>Browser: 최종 결과 JSON 응답
@@ -221,36 +232,56 @@ sequenceDiagram
 
 ```mermaid
 erDiagram
-    MEMBER ||--o{ ANALYSIS : "performs"
-    ANALYSIS ||--o{ STYLE_HISTORY : "results in"
-    STYLE ||--o{ STYLE_HISTORY : "suggested"
+    Users ||--o{ Analysis_Results : "performs"
+    Users ||--o{ Makeup_Posts : "writes"
+    Users ||--o{ Scraps : "collects"
+    Makeup_Posts ||--o{ Scraps : "is stored in"
 
-    MEMBER {
-        string member_id PK
-        string password
-        string name
-        string email
+    Users {
+        int user_id PK
+        varchar email "UNIQUE"
+        varchar password
+        varchar nickname
+        text profile_image_url
+        text face_image_url
+        text bio
+        timestamp created_at
     }
-    ANALYSIS {
-        long id PK
-        string member_id FK
-        string raw_image_url
-        string landmarks_json
-        string face_type
-        datetime created_at
+
+    Analysis_Results {
+        int analysis_id PK
+        int user_id FK "Users(user_id) CASCADE"
+        varchar face_shape
+        boolean is_latest "Default: TRUE"
+        json eyebrow_coords
+        float eye_distance
+        float forehead_width
+        timestamp created_at
     }
-    STYLE {
-        long id PK
-        string style_name
-        string face_type_match
-        string description
+
+    Makeup_Posts {
+        int post_id PK
+        int user_id FK "Users(user_id) SET NULL"
+        varchar title
+        text description
+        text image_url
+        varchar makeup_type
+        varchar target_face_shape
+        varchar tpo_tag
+        int view_count "Default: 0"
+        int like_count "Default: 0"
+        timestamp created_at
     }
-    STYLE_HISTORY {
-        long id PK
-        long analysis_id FK
-        long style_id FK
+
+    Scraps {
+        int scrap_id PK
+        int user_id FK "Users(user_id) CASCADE"
+        int post_id FK "Makeup_Posts(post_id) CASCADE"
+        timestamp created_at "UNIQUE(user_id, post_id)"
     }
 ```
+
+
 
 ---
 
@@ -273,6 +304,8 @@ erDiagram
 | 서비스 단계 | 화면 이미지 |
 | :--- | :--- |
 | **메인 대시보드** | ![메인](md/image/스크린샷%202026-03-11%20123353.png) |
+
+
 | **Lex 지능형 상담** | ![챗봇](md/image/스크린샷%202026-03-11%20123410.png) |
 | **얼굴 분석 리포트** | ![분석](md/image/image-9.png) |
 | **사용자 이력 관리** | ![마이페이지](md/image/스크린샷%202026-03-11%20140924.png) |
