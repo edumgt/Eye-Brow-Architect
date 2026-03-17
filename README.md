@@ -40,6 +40,14 @@
 
 ---
 
+## 2) 시스템 아키텍처 (System Architecture)
+
+![시스템 아키텍처](md/revised_architecture.png)
+
+> **Security & Efficiency**: Public/Private 서브넷 분리와 ALB를 통한 트래픽 관리, NAT Gateway를 통한 보안 아웃바운드 통신을 지원하는 전문적인 클라우드 아키텍처입니다.
+
+---
+
 ## 3) 기술 스택 (Tech Stack)
 
 | Category | Technology |
@@ -52,7 +60,7 @@
 
 ---
 
-## 5) 환경 구분 (Environment)
+## 4) 환경 구분 (Environment)
 
 *   **Local**: Docker Compose를 활용하여 전체 MSA 환경을 로컬 PC에서 1분 만에 구동.
 *   **Dev (K8s)**: Minikube 또는 로컬 Kubernetes 환경에서 오버레이(Overlay) 설정을 통한 배포 테스트.
@@ -60,7 +68,7 @@
 
 ---
 
-## 6) 개발환경 k8s 구성과 AWS 구성 구분
+## 5) 개발환경 k8s 구성과 AWS 구성 구분
 
 ### 6-1. Dev Kubernetes
 *   **Local Registry**: 로컬 이미지를 활용하여 빠른 개발 피드백 루프 생성.
@@ -73,7 +81,7 @@
 
 ---
 
-## 7) Docker 실행
+## 6) Docker 실행
 
 ### 7-1. 실행
 ```powershell
@@ -88,7 +96,7 @@ docker-compose up -d --build
 
 ---
 
-## 8) Kubernetes 실행 (Local/Dev)
+## 7) Kubernetes 실행 (Local/Dev)
 
 로컬 개발 환경에서의 쿠버네티스 오케스트레이션 구동 방식입니다. 
 
@@ -106,7 +114,7 @@ kubectl get ingress
 
 ---
 
-## 9) Amazon EKS 운영 가이드 (Production)
+## 8) Amazon EKS 운영 가이드 (Production)
 
 실제 AWS 운영 환경에서의 무중단 배포 및 확장을 위한 설정입니다.
 
@@ -125,7 +133,7 @@ docker push [ACCOUNT_ID].dkr.ecr.ap-northeast-2.amazonaws.com/brow-architect-bac
 
 ---
 
-## 10) CI/CD 파이프라인 구성 (GitHub Actions)
+## 9) CI/CD 파이프라인 구성 (GitHub Actions)
 
 본 프로젝트는 완성도 높은 CI/CD 환경을 구축하여 코드 변경 시 자동으로 배포됩니다.
 
@@ -136,7 +144,7 @@ docker push [ACCOUNT_ID].dkr.ecr.ap-northeast-2.amazonaws.com/brow-architect-bac
 
 ---
 
-## 12) Mermaid 다이어그램
+## 10) Mermaid 다이어그램
 
 ### 12-1. 환경별 배포 흐름
 개발자로부터 실제 운영 환경까지의 견고한 배포 파이프라인 구조입니다.
@@ -285,7 +293,7 @@ erDiagram
 
 ---
 
-## 13) 주요 API 명세 및 통신 구조
+## 11) 주요 API 명세 및 통신 구조
 
 백엔드와 프런트엔드 간의 핵심 데이터 교환 인터페이스입니다.
 
@@ -298,7 +306,7 @@ erDiagram
 
 ---
 
-## 14) 화면 캡처 및 서비스 증적
+## 12) 화면 캡처 및 서비스 증적
 
 ### 14-1. 서비스 실행 화면 (Browser)
 | 서비스 단계 | 화면 이미지 |
@@ -321,7 +329,7 @@ erDiagram
 
 ---
 
-## 15) 주요 경로 (Project Structure Summary)
+## 13) 주요 경로 (Project Structure Summary)
 *   **`src/main/java/.../analysis/`**: AWS Lex 연동 컨트롤러 및 지능형 상담 서비스 로직
 *   **`AI_Service/`**: FastAPI 기반 파이썬 얼굴 분석 엔진 및 알고리즘 구현부
 *   **`Frontend/`**: React 라이브러리 기반 UI 및 HTML5 Canvas 드로잉 엔진
